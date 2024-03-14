@@ -3,8 +3,7 @@ from .views import *
 from .views import CourseApproval
 
 urlpatterns = [
-    #     path('categoryOperations/<int:id>/',
-    #          CourseCategoryOperation.as_view()),
+
     path('categoryCreating/', CategoryCreation.as_view()),
     path('categoryUpdate/<int:pk>/', CategoryUpdateAndRetrieve.as_view()),
     path('categoriesList/', CategoryList.as_view()),
@@ -19,7 +18,9 @@ urlpatterns = [
          CategoryUpdatingAndDeletion.as_view()),
     path('userBlockAndUnblock/<int:pk>/', UserBlockAndUnblock.as_view()),
     path('videoList/', CourseVideoView.as_view()),
-    path('videoApproval/<int:pk>/', VideoApproval.as_view())
+    path('videoApproval/<int:pk>/', VideoApproval.as_view()),
+    path('aggregation_details/', AllCount.as_view()),
+    path('salesDetails/', MonthlyCoursesSoldView.as_view())
 
 
 ]

@@ -1,4 +1,7 @@
 
+from django.http import JsonResponse
+from django.db.models import Count
+from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 from django.http import Http404
 from rest_framework.views import APIView
@@ -16,6 +19,7 @@ from rest_framework import serializers
 from course.serializer import *
 from rest_framework.permissions import IsAuthenticated
 from users.serializer import CustomUserSerializer
+from .serializer import CountSerializer
 # Create your views here.
 
 """
@@ -32,7 +36,6 @@ class CategoryCreation(CreateAPIView):
         try:
             user = self.request.user
             admin = CustomUser.objects.filter(id=user.pk, role='admin')
-            print(user, admin, "---------------------->>>>>>.")
             if not admin.exists():
                 data = {
                     "message": "You are not authorized to add categories.",
@@ -145,20 +148,8 @@ class CertificateApproval(RetrieveUpdateAPIView):
             "status": status.HTTP_200_OK
         }
         return Response(data=data)
-    # def patch(self, request, *args, **kwargs):
-    #     certificate_id = kwargs.get('certificate_id')
-
-    #     try:
-    #         certificate = Certificate.objects.get(pk=certificate_id)
-    #         certificate.is_approved = True
-    #         certificate.save()
-    #         return Response({"message": "Admin Approved Successfully", "data": certificate.tutor.user.username})
-    #     except:
-    #         return Response({"message": "Not Found", "status": status.HTTP_404_NOT_FOUND})
 
 
-# class TutorApproval(RetrieveUpdateAPIView):
-#     queryset = Certificate.objects.get(pk=tutor_id)
 class CourseList(ListAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
@@ -185,7 +176,7 @@ class CategoryAdding(APIView):
 
     def post(self, request, *args, **kwargs):
         user = self.request.user
-        print(user, '--------------------->>>>>')
+
         # Check if the user has the 'admin' role
         if not user.role == 'admin':
             return Response({"message": "You are not an admin", "status": status.HTTP_401_UNAUTHORIZED})
@@ -235,7 +226,7 @@ class CategoryUpdatingAndDeletion(RetrieveUpdateDestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        print(user, '------------------>>>')
+
         if not user.role == 'admin':
             data = {
                 "message": "You are not admin",
@@ -259,7 +250,7 @@ class UserBlockAndUnblock(RetrieveUpdateDestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         user = self.request.user
-        print(user, '------------------------------>>>>')
+
         if not user.role == 'admin':
             data = {
                 "message": "You are not admin",
@@ -319,3 +310,60 @@ class CertificateView(ListAPIView):
 class CourseVideoView(ListAPIView):
     queryset = VideosCourse.objects.all()
     serializer_class = VideoWithCourseDetails
+
+
+class AllCount(ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        student_count = StudentProfile.objects.all().count()
+        tutor_count = TutorProfile.objects.all().count()
+        course_count = Course.objects.filter(is_available=True).count()
+        certificate_count = Certificate.objects.filter(
+            is_approved=True).count()
+
+        data = {
+            'student_count': student_count,
+            'tutor_count': tutor_count,
+            'course_count': course_count,
+            'certificate_count': certificate_count,
+        }
+
+        serializer = CountSerializer(data)
+        return Response(serializer.data)
+
+
+class MonthlyCoursesSoldView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        monthly_courses_sold = CoursePurchase.objects \
+            .annotate(month=TruncMonth('created_at')) \
+            .values('month') \
+            .annotate(course_details=Count('id')) \
+            .order_by('month')
+
+        data = list(monthly_courses_sold)
+
+        # Fetch course details for each month
+        for entry in data:
+            courses = CoursePurchase.objects.filter(
+                created_at__month=entry['month'].month)
+            entry['courses'] = [{"course_price": course.course.price}
+                                for course in courses]
+        total_amount_data = []
+
+        for entry in data:
+            courses = entry.get('courses', [])
+            total_amount = sum(float(course.get('course_price', 0))
+                               for course in courses)
+
+            total_amount_data.append({
+                'month': entry['month'],
+                'total_amount': total_amount,
+            })
+        print(total_amount_data, "------------------------------->>>>")
+        data = {
+            "data": total_amount
+        }
+        return JsonResponse(total_amount_data, safe=False)

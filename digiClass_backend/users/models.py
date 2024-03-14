@@ -20,7 +20,7 @@ class CustomUser(AbstractUser):
     is_blocked = models.BooleanField(default=False, blank=True, null=True)
     is_google = models.BooleanField(default=False, blank=True, null=True)
     otp = models.CharField(max_length=6, blank=True, null=True, default=None)
-    USERNAME_FIELD = 'email'
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'role']
 

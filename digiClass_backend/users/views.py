@@ -1,3 +1,5 @@
+
+from rest_framework.pagination import PageNumberPagination
 import random
 from django.shortcuts import render
 from urllib.parse import quote
@@ -296,14 +298,20 @@ class tutorProfileView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class UserPagination(PageNumberPagination):
+    page_size = 3
+
+
 class studentListing(ListAPIView):
     queryset = StudentProfile.objects.all()
     serializer_class = studentProfileSerializer
+    pagination_class = UserPagination
 
 
 class tutorListing(ListAPIView):
     queryset = TutorProfile.objects.all()
     serializer_class = tutorProfileSerializer
+    pagination_class = UserPagination
 
 
 class NewTutoraLisiting(ListAPIView):
