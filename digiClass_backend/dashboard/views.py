@@ -206,13 +206,18 @@ class CategoryUpdatingAndDeletion(RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         user = self.request.user
-
         if not user.role == 'admin':
             data = {
                 "message": "You are not admin",
                 "status": status.HTTP_401_UNAUTHORIZED
             }
             return Response(data=data)
+        category_name = request.data.get("name")
+        if CourseCategory.objects.filter(name=category_name).exists():
+            data = {
+                "message": "Category with this name already exist",
+            }
+            return Response(data=data, status=status.HTTP_409_CONFLICT)
         instance = self.get_object()
         serializer = self.get_serializer(
             instance, data=request.data, partial=True)
@@ -237,7 +242,7 @@ class CategoryUpdatingAndDeletion(RetrieveUpdateDestroyAPIView):
         instance.is_available = not instance.is_available
         instance.save()
         data = {
-            "message": "Category Deleted Successfully",
+            "message": "Category Availability Updated Successfully",
             "status": status.HTTP_200_OK
         }
         return Response(data=data)
