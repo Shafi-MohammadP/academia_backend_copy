@@ -158,12 +158,16 @@ class CourseList(ListAPIView):
 class CourseApproval(RetrieveUpdateAPIView):
     queryset = Course.objects.all()
     serializer_class = IndividualCourseSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         course_id = self.kwargs.get('pk')
         return Course.objects.get(id=course_id)
 
     def update(self, request, *args, **kwargs):
+        user = self.request.user
+        if user.role != 'admin':
+            return Response({"error": "Not allowed"}, status=status.HTTP_401_UNAUTHORIZED)
         instance = self.get_object()
         instance.is_available = not instance.is_available
         instance.save(update_fields=['is_available'])

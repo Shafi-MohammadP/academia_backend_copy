@@ -1,4 +1,5 @@
 
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.pagination import PageNumberPagination
 import random
 from django.shortcuts import render
@@ -208,6 +209,8 @@ class GooglLogin(APIView):
 
 
 class ResetPassword(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, *args, **kwargs):
         email = request.data.get('email')
         try:
@@ -235,22 +238,36 @@ class ResetPassword(APIView):
         user_instance = get_object_or_404(CustomUser, email=email)
         entered_otp = ''.join(otp)
         if user_instance.otp == entered_otp:
-            return Response({"message": "otp verified successfully"}, status=status.HTTP_200_OK)
+            # Generate token
+            refresh = RefreshToken.for_user(user_instance)
+            token = {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }
+            return Response({"message": "otp verified successfully", "token": token}, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "You entered wrong otp"}, status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
+            return Response({"error": "You entered wrong otp"}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
 
 
 class PasswordChange(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def patch(self, request, *args, **kwargs):
+        # Extract password and confirmPassword from request data
         password = request.data.get('password')
         password2 = request.data.get('confirmPassword')
-        user_id = kwargs.get('pk')
+        user_id = request.user.id  # Extract user ID from the authenticated token
+        print(request.user, "----------------------->>")
+        # Retrieve user instance based on the user ID from the token
         try:
             user_instance = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Check if the passwords match
         if password == password2:
+            # Set the new password
             user_instance.set_password(password)
             user_instance.otp = None
             user_instance.save()

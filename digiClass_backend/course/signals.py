@@ -91,6 +91,7 @@ def send_video_added_notification(sender, instance, created, *args, **kwargs):
 def send_comment_added_notification(sender, instance, created, *args, **kwargs):
     if created:
         notification_text = f"{instance.video.id}"
+        print(notification_text, "text---------------->>")
         async_to_sync(channel_layer.group_send)(
             "user_group",
             {
